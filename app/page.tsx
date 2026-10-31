@@ -64,7 +64,7 @@ export default function HomePage() {
             Welcome to <span className="bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent drop-shadow-sm">DailyKart</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-800 mb-10 max-w-2xl mx-auto drop-shadow-sm font-medium">
-            Your one-stop solution for fresh groceries delivered to your doorstep within 24 hours
+            Your one-stop solution for fresh groceries delivered to your doorstep within 1 hour
           </p>
           <div className="flex gap-4 justify-center">
             <Button 
@@ -94,7 +94,7 @@ export default function HomePage() {
             <Card className="p-8 text-center hover:shadow-xl transition-all hover:-translate-y-2 bg-white/90 backdrop-blur-sm border-2 border-green-100">
               <div className="text-6xl mb-4">⚡</div>
               <h3 className="text-xl font-semibold mb-3 text-gray-900">Fast Delivery</h3>
-              <p className="text-gray-600">Quick and reliable delivery to your home within 24 hours of ordering</p>
+              <p className="text-gray-600">Quick and reliable delivery to your home within 1 hour of ordering</p>
             </Card>
             <Card className="p-8 text-center hover:shadow-xl transition-all hover:-translate-y-2 bg-white/90 backdrop-blur-sm border-2 border-blue-100">
               <div className="text-6xl mb-4">💰</div>
@@ -105,35 +105,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Categories Preview */}
-      <section className="py-20 bg-gradient-to-b from-white via-green-50 to-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Shop by Category</h2>
-            <p className="text-lg text-gray-600">Browse our wide selection of fresh products</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {["Fruits", "Vegetables", "Grains"].map((category) => (
-              <Card
-                key={category}
-                className="p-10 text-center cursor-pointer hover:shadow-2xl transition-all hover:-translate-y-3 bg-gradient-to-br from-white via-blue-50 to-green-50 border-2 border-blue-200"
-                onClick={() => setAuthModal({ open: true, type: "login" })}
-              >
-                <div className="text-7xl mb-6">
-                  {category === "Fruits" && "🍎"}
-                  {category === "Vegetables" && "🥕"}
-                  {category === "Grains" && "🌾"}
-                </div>
-                <h3 className="text-2xl font-bold mb-3 text-gray-900">{category}</h3>
-                <p className="text-gray-600 mb-4">Browse our selection of fresh {category.toLowerCase()}</p>
-                <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-green-600 hover:text-white">
-                  Explore →
-                </Button>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+     
 
       {/* CTA Section */}
       <section className="py-20 relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-500 to-green-600">

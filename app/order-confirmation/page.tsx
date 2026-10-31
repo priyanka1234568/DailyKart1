@@ -70,7 +70,7 @@ export default function OrderConfirmationPage() {
             Order Confirmed!
           </h1>
           <p className="text-lg text-gray-600 mb-8">
-            Thank you for your order. Your groceries will be delivered within 24 hours.
+            Thank you for your order. Your groceries will be delivered within 1 hour.
           </p>
 
           {/* Order Details Card */}
@@ -81,12 +81,7 @@ export default function OrderConfirmationPage() {
             </div>
             
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                <p className="font-semibold text-gray-900">
-                  Order ID: <span className="text-blue-600">{orderId || "N/A"}</span>
-                </p>
-              </div>
+              
               
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-green-600" />
@@ -100,7 +95,7 @@ export default function OrderConfirmationPage() {
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-orange-600" />
                 <p className="text-sm text-gray-700">
-                  Estimated Delivery: <span className="font-semibold text-orange-700">24 hours</span>
+                  Estimated Delivery: <span className="font-semibold text-orange-700">1 hour</span>
                 </p>
               </div>
               
