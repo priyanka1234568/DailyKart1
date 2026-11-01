@@ -13,6 +13,9 @@ interface Product {
   price: number
   quantity: number
   image_url: string
+  is_purchasable?: boolean
+  is_expired?: boolean
+  availability_label?: string
 }
 
 interface ShopProductGridProps {
@@ -79,7 +82,8 @@ export default function ShopProductGrid({ categoryId }: ShopProductGridProps) {
         }),
       })
 
-      if (!response.ok) throw new Error("Failed to add to cart")
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Failed to add to cart")
 
       toast({
         title: "Success",
@@ -90,7 +94,7 @@ export default function ShopProductGrid({ categoryId }: ShopProductGridProps) {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add to cart",
+        description: error instanceof Error ? error.message : "Failed to add to cart",
         variant: "destructive",
       })
     }
@@ -135,8 +139,12 @@ export default function ShopProductGrid({ categoryId }: ShopProductGridProps) {
               }
               className="w-16"
             />
-            <Button onClick={() => handleAddToCart(product.id)} disabled={product.quantity === 0} className="flex-1">
-              {product.quantity === 0 ? "Out of Stock" : "Add to Cart"}
+            <Button
+              onClick={() => handleAddToCart(product.id)}
+              disabled={product.is_purchasable === false || product.quantity === 0}
+              className="flex-1"
+            >
+              {product.is_expired ? "Expired" : product.quantity === 0 ? "Out of Stock" : "Add to Cart"}
             </Button>
           </div>
         </Card>

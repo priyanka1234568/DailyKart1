@@ -16,9 +16,14 @@ export async function POST(request: NextRequest) {
     console.log("[API] Successfully added to cart")
 
     return NextResponse.json({ success: true }, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error adding to cart:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const message = error?.message || "Internal server error"
+    const clientError =
+      message.includes("expired") ||
+      message.includes("stock") ||
+      message.includes("not found")
+    return NextResponse.json({ error: message }, { status: clientError ? 400 : 500 })
   }
 }
 
@@ -71,8 +76,9 @@ export async function PUT(request: NextRequest) {
     await updateCartItemQuantity(String(userId), String(productId), quantity)
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating cart:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const message = error?.message || "Internal server error"
+    return NextResponse.json({ error: message }, { status: 400 })
   }
 }

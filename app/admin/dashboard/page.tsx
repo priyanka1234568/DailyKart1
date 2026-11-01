@@ -19,6 +19,8 @@ interface Product {
   quantity: number
   image_url: string
   category_id?: string | number
+  minimum_stock?: number
+  expiry_date?: string | null
 }
 
 export default function AdminDashboard() {
@@ -79,10 +81,13 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">Product Management</h1>
-          <Button onClick={() => setShowForm(!showForm)} size="lg" className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all">
-            {showForm ? "Cancel" : "Add New Product"}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">Product Management</h1>
+            <p className="text-sm text-muted-foreground mt-1">Track stock, expiry dates, and product availability from one dashboard.</p>
+          </div>
+          <Button onClick={() => { setShowForm(!showForm); if (showForm) setEditProduct(null) }} size="lg" className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all">
+            {showForm ? "Cancel" : "Add Product"}
           </Button>
         </div>
 

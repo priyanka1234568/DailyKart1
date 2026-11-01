@@ -1,16 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getDb } from "@/lib/db"
+import { getDb, ensureProductInventoryColumns } from "@/lib/db"
+import { enrichProduct, formatDateOnly } from "@/lib/inventory"
+
+function toNullableDate(value: unknown) {
+  if (value === null || value === undefined || value === "") return null
+  return formatDateOnly(String(value))
+}
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let connection
   try {
+    await ensureProductInventoryColumns()
     const { id } = await params
     connection = await getDb()
-    const [rows]: any = await connection.execute("SELECT * FROM products WHERE id = ?", [Number(id)])
+    const [rows]: any = await connection.execute(
+      `SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`,
+      [Number(id)],
+    )
     if (rows.length === 0) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 })
     }
-    return NextResponse.json(rows[0])
+    return NextResponse.json(enrichProduct(rows[0]))
   } catch (error) {
     console.error("Error fetching product:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -24,7 +34,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const resolvedParams = await params
     const id = resolvedParams.id
-    const { name, description, price, quantity, categoryId, imageUrl } = await request.json()
+    await ensureProductInventoryColumns()
+    const { name, description, price, quantity, categoryId, imageUrl, minimumStock, expiryDate } = await request.json()
+
+    if (Number(price) < 0 || Number(quantity) < 0 || Number(minimumStock ?? 0) < 0) {
+      return NextResponse.json({ error: "Price, stock, and minimum stock must be zero or greater" }, { status: 400 })
+    }
     
     connection = await getDb()
     
@@ -39,15 +54,28 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Update the product
     await connection.execute(
       `UPDATE products 
-       SET name = ?, description = ?, price = ?, quantity = ?, category_id = ?, image_url = ? 
+       SET name = ?, description = ?, price = ?, quantity = ?, minimum_stock = ?, expiry_date = ?, category_id = ?, image_url = ?, updated_at = NOW()
        WHERE id = ?`,
-      [name, description || null, Number(price), Number(quantity), Number(categoryId), imageUrl || null, Number(id)]
+      [
+        name,
+        description || null,
+        Number(price),
+        Number(quantity),
+        Number(minimumStock ?? 10),
+        toNullableDate(expiryDate),
+        Number(categoryId),
+        imageUrl || null,
+        Number(id),
+      ]
     )
     
     // Fetch updated product
-    const [rows]: any = await connection.execute("SELECT * FROM products WHERE id = ?", [Number(id)])
+    const [rows]: any = await connection.execute(
+      `SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`,
+      [Number(id)],
+    )
     
-    return NextResponse.json(rows[0])
+    return NextResponse.json(enrichProduct(rows[0]))
   } catch (error: any) {
     console.error("[PUT] Error updating product:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

@@ -13,6 +13,8 @@ interface CartItem {
   price: number
   quantity: number
   image_url: string
+  is_expired?: boolean
+  is_purchasable?: boolean
 }
 
 interface User {
@@ -134,6 +136,14 @@ export default function CartPage() {
       })
       return
     }
+    if (cartItems.some((item) => item.is_expired || item.is_purchasable === false)) {
+      toast({
+        title: "Error",
+        description: "Your cart contains an expired or unavailable product. Remove it before checkout.",
+        variant: "destructive",
+      })
+      return
+    }
     router.push("/billing")
   }
 
@@ -196,6 +206,9 @@ export default function CartPage() {
                       />
                       <div className="flex-grow">
                         <h3 className="font-semibold">{item.name}</h3>
+                        {item.is_expired && (
+                          <p className="text-sm text-red-600 font-medium">Expired — cannot be purchased</p>
+                        )}
                         <p className="text-sm text-muted-foreground">₹{Number(item.price).toFixed(2)} each</p>
                         <div className="flex items-center gap-2 mt-2">
                           <Button

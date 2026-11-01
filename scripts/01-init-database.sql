@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS products (
   description TEXT,
   price DECIMAL(10, 2) NOT NULL,
   quantity INT NOT NULL DEFAULT 0,
+  minimum_stock INT NOT NULL DEFAULT 10,
+  expiry_date DATE NULL,
   category_id INT NOT NULL,
   image_url VARCHAR(500),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

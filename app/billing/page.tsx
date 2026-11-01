@@ -16,6 +16,8 @@ interface CartItem {
   name: string
   price: number
   quantity: number
+  is_expired?: boolean
+  is_purchasable?: boolean
 }
 
 interface User {
@@ -99,6 +101,15 @@ export default function BillingPage() {
       toast({
         title: "Error",
         description: "Your cart is empty",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (cartItems.some((item: any) => item.is_expired || item.is_purchasable === false)) {
+      toast({
+        title: "Error",
+        description: "Your cart contains an expired or unavailable product. Remove it before checkout.",
         variant: "destructive",
       })
       return

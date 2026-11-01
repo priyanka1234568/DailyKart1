@@ -16,6 +16,8 @@ interface Product {
   quantity?: number
   image_url?: string
   category_id?: string | number
+  minimum_stock?: number
+  expiry_date?: string | null
 }
 
 interface AdminProductFormProps {
@@ -31,6 +33,8 @@ export default function AdminProductForm({ onProductAdded, product }: AdminProdu
     quantity: "",
     categoryId: "",
     imageUrl: "",
+    minimumStock: "10",
+    expiryDate: "",
   })
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
@@ -64,6 +68,8 @@ export default function AdminProductForm({ onProductAdded, product }: AdminProdu
         quantity: product.quantity?.toString() || "",
         categoryId: product.category_id?.toString() || "",
         imageUrl: product.image_url || "",
+        minimumStock: product.minimum_stock?.toString() || "10",
+        expiryDate: product.expiry_date ? String(product.expiry_date).slice(0, 10) : "",
       })
     }
   }, [product])
@@ -87,11 +93,14 @@ export default function AdminProductForm({ onProductAdded, product }: AdminProdu
           quantity: Number.parseInt(formData.quantity || "0"),
           categoryId: Number(formData.categoryId),
           imageUrl: formData.imageUrl || null,
+          minimumStock: Number.parseInt(formData.minimumStock || "10"),
+          expiryDate: formData.expiryDate || null,
         }),
       })
 
+      const result = await response.json()
       if (!response.ok) {
-        throw new Error(isEditing ? "Failed to update product" : "Failed to create product")
+        throw new Error(result.error || (isEditing ? "Failed to update product" : "Failed to create product"))
       }
 
       toast({
@@ -106,13 +115,20 @@ export default function AdminProductForm({ onProductAdded, product }: AdminProdu
         quantity: "",
         categoryId: categories[0]?.id || "",
         imageUrl: "",
+        minimumStock: "10",
+        expiryDate: "",
       })
 
       onProductAdded()
     } catch (error) {
       toast({
         title: "Error",
-        description: product?.id ? "Failed to update product" : "Failed to add product",
+        description:
+          error instanceof Error
+            ? error.message
+            : product?.id
+              ? "Failed to update product"
+              : "Failed to add product",
         variant: "destructive",
       })
     } finally {
@@ -121,7 +137,7 @@ export default function AdminProductForm({ onProductAdded, product }: AdminProdu
   }
 
   return (
-    <Card className="p-6 mb-8">
+    <Card className="p-6 mb-8 rounded-2xl shadow-md">
       <h2 className="text-2xl font-bold mb-6">{product?.id ? "Edit Product" : "Add New Product"}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -158,6 +174,7 @@ export default function AdminProductForm({ onProductAdded, product }: AdminProdu
               type="number"
               placeholder="0.00"
               step="0.01"
+              min="0"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
               required
@@ -165,14 +182,40 @@ export default function AdminProductForm({ onProductAdded, product }: AdminProdu
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Quantity</label>
+            <label className="block text-sm font-medium mb-2">Available Stock</label>
             <Input
               type="number"
+              min="0"
               placeholder="0"
               value={formData.quantity}
               onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Minimum Stock Quantity</label>
+            <Input
+              type="number"
+              min="0"
+              placeholder="10"
+              value={formData.minimumStock}
+              onChange={(e) => setFormData({ ...formData, minimumStock: e.target.value })}
+              required
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Low Stock is shown when available stock is at or below this amount.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Expiry Date (optional)</label>
+            <Input
+              type="date"
+              value={formData.expiryDate}
+              onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Leave empty for products that do not expire.</p>
           </div>
         </div>
 

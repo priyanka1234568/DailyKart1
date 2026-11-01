@@ -6,7 +6,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const categoryId = searchParams.get("categoryId")
 
-    const products = await getProducts(categoryId || undefined)
+    const includeExpired = searchParams.get("includeExpired") === "true"
+    const products = await getProducts(categoryId || undefined, { includeExpired })
     const categories = await getCategories()
 
     return NextResponse.json({
