@@ -8,20 +8,32 @@ Follow these steps to get DailyKart running on your local machine.
 
 ## Step 1: Database Setup
 
-### 1.1 Open MySQL Workbench
-- Launch MySQL Workbench
-- Connect to your local MySQL server (localhost:3306)
-- Username: `root`
-- Password: `priyanka123`
+### 1.1 Start MySQL (WAMP on port 3306)
 
-### 1.2 Create Database
+DailyKart and MySQL Workbench use **WAMP MySQL** at `127.0.0.1:3306` with user `root` and an **empty password**. A different MySQL install may be running on port 3309 — do not point Workbench at that server.
+
+Before opening Workbench or running the app:
+
+1. Start **WAMP as Administrator** and wait until the tray icon is **green**, or
+2. From the project root run `npm run mysql:up` (starts WAMP `mysqld` if 3306 is down).
+
+A Windows logon/startup helper is installed so port 3306 comes up after you sign in. If Workbench still says "Unable to connect to localhost", run `npm run mysql:up` first.
+
+### 1.2 Open MySQL Workbench
+- Launch MySQL Workbench
+- Connection: `127.0.0.1`, port `3306`
+- Username: `root`
+- Password: *(leave empty)*
+- SSL: disabled / Do not use SSL
+
+### 1.3 Create Database
 Run this command in MySQL Workbench:
 \`\`\`sql
 CREATE DATABASE dailykart;
 USE dailykart;
 \`\`\`
 
-### 1.3 Run SQL Scripts
+### 1.4 Run SQL Scripts
 Execute the following scripts in order:
 
 **Script 1: Cleanup (if needed)**
@@ -35,7 +47,7 @@ Copy and paste the entire content from `scripts/01-init-database.sql` and execut
 **Script 3: Insert Sample Data**
 Copy and paste the entire content from `scripts/02-seed-data.sql` and execute it.
 
-### 1.4 Verify Database
+### 1.5 Verify Database
 Run this to verify tables were created:
 \`\`\`sql
 SHOW TABLES;
@@ -56,9 +68,10 @@ You should see:
 In the root directory of the project, create a file named `.env.local` with:
 
 \`\`\`
-MYSQL_HOST=localhost
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
 MYSQL_USER=root
-MYSQL_PASSWORD=priyanka123
+MYSQL_PASSWORD=
 MYSQL_DATABASE=dailykart
 \`\`\`
 

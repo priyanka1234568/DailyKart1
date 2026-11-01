@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "mysql:up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ensure-mysql.ps1",
     "lint": "eslint .",
     "start": "next start"
   },

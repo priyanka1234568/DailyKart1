@@ -20,6 +20,14 @@ export async function getDb() {
     return connection
   } catch (error) {
     console.error("[v0] Database connection error:", error)
+    const code = (error as { code?: string }).code
+    if (code === "ECONNREFUSED") {
+      const host = process.env.MYSQL_HOST || "127.0.0.1"
+      const port = process.env.MYSQL_PORT || "3306"
+      throw new Error(
+        `MySQL is not running on ${host}:${port}. Start WAMP (green icon) or run npm run mysql:up, then retry.`,
+      )
+    }
     throw new Error("Failed to connect to database")
   }
 }
