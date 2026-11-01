@@ -30,7 +30,7 @@ function generateEmailHTML(type: string, data: any): string {
                 <p><strong>Amount:</strong> Rs. ${paidAmount.toFixed(2)}</p>
                 <p><strong>Payment:</strong> ${data.paymentMethod || "Confirmed"}</p>
               </div>
-              <p>Your groceries will be delivered within 24 hours. Keep this email as your order receipt.</p>
+              <p>Your groceries will be delivered within 1 hour. Keep this email as your order receipt.</p>
               <p>Thank you for using DailyKart!</p>
             </div>
             <div class="footer">
@@ -51,7 +51,7 @@ function generateEmailHTML(type: string, data: any): string {
       : `Welcome to DailyKart! We're excited to have you as part of our community.`
     const actionText = isAdmin
       ? `You can now access the Admin Dashboard to manage the platform.`
-      : `You can now browse our fresh groceries and place orders for delivery within 24 hours.`
+      : `You can now browse our fresh groceries and place orders for delivery within 1 hour.`
     const buttonHTML = isAdmin
       ? `<a href="http://localhost:3000/admin/dashboard" class="cta-button">Access Admin Dashboard</a>`
       : `<a href="http://localhost:3000/shop" class="cta-button">Start Shopping</a>`
@@ -172,7 +172,7 @@ function generateEmailHTML(type: string, data: any): string {
                 <p><strong>Method:</strong> ${data.paymentMethodName}</p>
                 <p><strong>Date:</strong> ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
               </div>
-              <p>Your groceries will be delivered within 24 hours.</p>
+              <p>Your groceries will be delivered within 1 hour.</p>
               <p>Thank you for using DailyKart!</p>
             </div>
             <div class="footer">

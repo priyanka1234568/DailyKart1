@@ -63,8 +63,8 @@ export default function Chatbot() {
         'hi': 'Hello! 🛒 Welcome to DailyKart! How can I help you with your shopping experience?',
         'help': 'I can help you with: 🥬 Product information, 📦 Order status, 🚚 Delivery details, 💳 Payment options, and more! What do you need assistance with?',
         'product': 'We have a wide range of fresh products: 🍎 Fruits, 🥕 Vegetables, and 🌾 Grains. Are you looking for something specific?',
-        'shipping': 'We deliver fresh groceries within 24 hours! 🚚 Delivery charges are ₹2. Free delivery on orders above ₹500!',
-        'delivery': 'We offer fast delivery within 24 hours of your order! 🚚 Delivery charges are ₹50.',
+        'shipping': 'We deliver fresh groceries within 1 hour! 🚚 Delivery charges are ₹2. Free delivery on orders above ₹500!',
+        'delivery': 'We offer fast delivery within 1 hour of your order! 🚚 Delivery charges are ₹50.',
         'return': 'Our return policy allows returns within 48 hours of delivery. Fresh groceries are returnable if they don\'t meet quality standards. 📦',
         'payment': 'We accept: 💳 Cash on Delivery (COD) and 💰 Online Payment (UPI). Choose whatever is convenient for you!',
         'cod': 'Yes! We offer Cash on Delivery (COD). You can pay when your order arrives at your doorstep! 💵',
@@ -73,14 +73,14 @@ export default function Chatbot() {
         'price': 'We offer competitive prices on all our fresh groceries! Check our shop page for current prices. 💰',
         'contact': 'You can reach our customer service at support@dailykart.com 📧 or contact us for any queries!',
         'hours': 'Our customer service is available Monday to Sunday, 9 AM to 9 PM IST. ⏰',
-        'order': 'To place an order: 1) Browse products in Shop 📱 2) Add to cart 🛒 3) Checkout 💳 4) Receive within 24 hours! 🚚',
+        'order': 'To place an order: 1) Browse products in Shop 📱 2) Add to cart 🛒 3) Checkout 💳 4) Receive within 1 hour🚚',
         'fresh': 'All our products are fresh and handpicked daily! 🥬 We ensure quality and freshness. 🌟',
         'organic': 'We source fresh, organic products directly from trusted suppliers! 🌱 Quality guaranteed! ✨'
       };
       
       // Check if the user's message contains any keywords
       const userMessageLower = userMessage.text.toLowerCase();
-      let botReply = 'I\'m here to help with your grocery shopping! 🛒 Feel free to ask about: 🥬 Products, 🚚 Delivery (24 hours!), 💳 Payment options, 📦 Orders, or anything else! How can I assist you?';
+      let botReply = 'I\'m here to help with your grocery shopping! 🛒 Feel free to ask about: 🥬 Products, 🚚 Delivery (1 hour!), 💳 Payment options, 📦 Orders, or anything else! How can I assist you?';
       
       // Check for multiple keyword matches and provide the most relevant response
       for (const [keyword, response] of Object.entries(botResponses)) {

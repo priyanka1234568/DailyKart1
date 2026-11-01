@@ -29,7 +29,7 @@ function generateEmailHTML(type: string, data: any): string {
                 <p><strong>Total Amount:</strong> ₹${data.totalAmount.toFixed(2)}</p>
                 <p><strong>Status:</strong> Confirmed</p>
               </div>
-              <p>Your groceries will be delivered within 24 hours. You can track your order using the Order ID above.</p>
+              <p>Your groceries will be delivered within 1 hour. You can track your order using the Order ID above.</p>
               <p>If you have any questions, please contact our support team.</p>
             </div>
             <div class="footer">
@@ -63,7 +63,7 @@ function generateEmailHTML(type: string, data: any): string {
             <div class="content">
               <p>Hi ${data.fullName},</p>
               <p>Welcome to DailyKart! We're excited to have you as part of our community.</p>
-              <p>You can now browse our fresh groceries and place orders for delivery within 24 hours.</p>
+              <p>You can now browse our fresh groceries and place orders for delivery within 1 hour.</p>
               <p>
                 <a href="https://dailykart.example.com/shop" class="cta-button">Start Shopping</a>
               </p>
