@@ -309,21 +309,24 @@ export async function createOrder(userId: string, totalAmount: number, items: an
     }
 
     // Try with payment_method column first, fallback to without it
-    let result
+    let result: any
     try {
-      result = await connection.execute(
+      ;[result] = await connection.execute(
         "INSERT INTO orders (user_id, total_amount, status, payment_method, created_at) VALUES (?, ?, ?, ?, NOW())",
         [userId, totalAmount, "pending", paymentMethod],
       )
     } catch (error) {
       console.log("[DB] Payment method column not found, using fallback")
-      result = await connection.execute(
+      ;[result] = await connection.execute(
         "INSERT INTO orders (user_id, total_amount, status, created_at) VALUES (?, ?, ?, NOW())",
         [userId, totalAmount, "pending"],
       )
     }
-    
-    const orderId = (result as any).insertId
+
+    const orderId = result?.insertId
+    if (!orderId) {
+      throw new Error("Failed to create order")
+    }
     console.log("[DB] Order created with ID:", orderId)
 
     console.log("[DB] Adding order items...")

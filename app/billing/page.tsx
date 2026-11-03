@@ -44,6 +44,10 @@ export default function BillingPage() {
   })
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod")
 
+  const tax = totalAmount * 0.01
+  const delivery = 2
+  const finalTotal = totalAmount + tax + delivery
+
   useEffect(() => {
     const userData = localStorage.getItem("user")
     if (!userData) {
@@ -130,8 +134,6 @@ export default function BillingPage() {
     try {
       setProcessing(true)
 
-      const finalTotal = totalAmount * 1.1 + 50
-
       console.log("[BILLING] Order data:", {
         userId: user?.id,
         items: cartItems,
@@ -186,10 +188,6 @@ export default function BillingPage() {
   }
 
   if (!user) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-
-  const tax = totalAmount * 0.01
-  const delivery = 2
-  const finalTotal = totalAmount + tax + delivery
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
