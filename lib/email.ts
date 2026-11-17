@@ -91,58 +91,6 @@ function generateEmailHTML(type: string, data: any): string {
     `
   }
 
-  if (type === "login-success") {
-    const isAdmin = data.userType === "admin"
-    const headerColor = isAdmin ? "#2c3e50" : "#3498db"
-    const title = isAdmin ? "Welcome Admin - Login Successful" : "Login Successful - DailyKart"
-    const greeting = isAdmin 
-      ? `Welcome back, Admin ${data.fullName}!`
-      : `Hi ${data.fullName},`
-    const message = isAdmin
-      ? `You have successfully logged into the DailyKart Admin Panel.`
-      : `You have successfully logged into your DailyKart account.`
-    const closingText = isAdmin
-      ? "Thank you for managing DailyKart!"
-      : "Thank you for using DailyKart!"
-    
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: ${headerColor}; color: white; padding: 20px; text-align: center; border-radius: 5px; }
-            .content { padding: 20px; background-color: #f9f9f9; margin: 20px 0; border-radius: 5px; }
-            .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-            .alert-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 10px 0; border-radius: 5px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>${title}</h1>
-            </div>
-            <div class="content">
-              <p>${greeting}</p>
-              <p>${message}</p>
-              ${!isAdmin ? `
-              <div class="alert-box">
-                <p><strong>Security Notice:</strong></p>
-                <p>If you did not log in, please contact our support team immediately and consider changing your password.</p>
-              </div>
-              ` : ''}
-              <p>${closingText}</p>
-            </div>
-            <div class="footer">
-              <p>&copy; 2025 DailyKart. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `
-  }
-
   if (type === "payment-receipt") {
     const paidAmount = Number(data.amount) || 0
     return `
@@ -254,7 +202,7 @@ export async function sendOrderConfirmationEmail(
   try {
     console.log(`[EMAIL] Attempting to send order receipt email to: ${email}`)
     const htmlContent = generateEmailHTML("order-confirmation", { orderId, totalAmount, fullName, paymentMethod })
-    await sendEmail(email, "Order Confirmed - DailyKart", htmlContent)
+    await sendEmail(email, "Receipt - DailyKart", htmlContent)
     console.log(`[EMAIL] Order receipt email sent successfully to: ${email}`)
   } catch (error) {
     console.error("Error sending order confirmation email:", error)
@@ -263,28 +211,18 @@ export async function sendOrderConfirmationEmail(
 }
 
 export async function sendWelcomeEmail(email: string, fullName: string, userType: "admin" | "user" = "user") {
+  if (userType === "admin") {
+    console.log(`[EMAIL] Skipping welcome email for admin: ${email}`)
+    return
+  }
+
   try {
-    console.log(`[EMAIL] Attempting to send welcome email to: ${email} (${userType})`)
-    const subject = userType === "admin" ? "Welcome Admin to DailyKart" : "Welcome to DailyKart"
+    console.log(`[EMAIL] Attempting to send welcome email to: ${email}`)
     const htmlContent = generateEmailHTML("welcome", { fullName, userType })
-    await sendEmail(email, subject, htmlContent)
+    await sendEmail(email, "Welcome to DailyKart", htmlContent)
     console.log(`[EMAIL] Welcome email sent successfully to: ${email}`)
   } catch (error: any) {
     console.error("[EMAIL] Error sending welcome email:", error)
-    console.error("[EMAIL] Error details:", error.message)
-    throw error
-  }
-}
-
-export async function sendLoginEmail(email: string, fullName: string, userType: "admin" | "user" = "user") {
-  try {
-    console.log(`[EMAIL] Attempting to send login email to: ${email} (${userType})`)
-    const subject = userType === "admin" ? "Welcome Admin - Login Successful" : "Login Successful - DailyKart"
-    const htmlContent = generateEmailHTML("login-success", { fullName, userType })
-    await sendEmail(email, subject, htmlContent)
-    console.log(`[EMAIL] Login email sent successfully to: ${email}`)
-  } catch (error: any) {
-    console.error("[EMAIL] Error sending login email:", error)
     console.error("[EMAIL] Error details:", error.message)
     throw error
   }

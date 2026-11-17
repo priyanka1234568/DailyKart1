@@ -162,13 +162,16 @@ export default function BillingPage() {
 
       toast({
         title: "Success",
-        description: paymentMethod === "cod" 
-          ? "Order placed successfully! Pay cash on delivery." 
-          : "Order placed successfully! Payment confirmed.",
+        description: orderData.emailSent
+          ? `Order placed. Receipt sent to ${orderData.emailTo}. Check inbox and spam.`
+          : paymentMethod === "cod"
+            ? "Order placed successfully! Pay cash on delivery."
+            : "Order placed successfully! Payment confirmed.",
       })
 
-      // Redirect to order confirmation
-      router.push(`/order-confirmation?orderId=${orderData.orderId}&paymentMethod=${paymentMethod}`)
+      const emailQuery = orderData.emailTo ? `&emailTo=${encodeURIComponent(orderData.emailTo)}` : ""
+      const emailSentQuery = `&emailSent=${orderData.emailSent ? "1" : "0"}`
+      router.push(`/order-confirmation?orderId=${orderData.orderId}&paymentMethod=${paymentMethod}${emailQuery}${emailSentQuery}`)
 
     } catch (error) {
       console.error("[BILLING] Error:", error)

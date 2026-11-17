@@ -1,9 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sendPaymentConfirmationEmail } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
-    const { amount, upiMethod, upiId, userEmail, userName } = await request.json()
+    const { amount, upiMethod, upiId, userEmail } = await request.json()
 
     if (!amount || !upiMethod || !userEmail) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -16,7 +15,6 @@ export async function POST(request: NextRequest) {
     const transactionId = `TXN${Date.now()}${Math.random().toString(36).substring(2, 9).toUpperCase()}`
 
     const recipientEmail = String(userEmail).trim().toLowerCase()
-    const recipientName = userName || "Customer"
 
     console.log(`[PAYMENT] Fake payment processed:`, {
       amount,
@@ -26,28 +24,12 @@ export async function POST(request: NextRequest) {
       userEmail: recipientEmail,
     })
 
-    let emailSent = false
-    let emailErrorMessage: string | null = null
-
-    try {
-      await sendPaymentConfirmationEmail(recipientEmail, recipientName, Number(amount), transactionId, upiMethod)
-      emailSent = true
-    } catch (emailError: any) {
-      emailErrorMessage = emailError?.message || String(emailError)
-      console.error("[PAYMENT] Failed to send payment email:", emailErrorMessage)
-    }
-
     return NextResponse.json({
       success: true,
-      message: emailSent
-        ? `Payment processed successfully. Confirmation email sent to ${recipientEmail}`
-        : "Payment processed successfully, but confirmation email could not be sent",
+      message: "Payment processed successfully",
       transactionId,
       amount,
       paymentMethod: `UPI (${upiMethod})`,
-      emailSent,
-      emailTo: recipientEmail,
-      emailError: emailErrorMessage,
     })
   } catch (error: any) {
     console.error("[PAYMENT] Payment processing error:", error)

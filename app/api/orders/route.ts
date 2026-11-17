@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createOrder } from "@/lib/db"
+import { createOrder, getUserById } from "@/lib/db"
+import { sendOrderConfirmationEmail } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,11 +15,40 @@ export async function POST(request: NextRequest) {
 
     const orderId = await createOrder(String(userId), Number(totalAmount), items, paymentMethod)
 
+    const user = await getUserById(String(userId))
+    const recipientEmail = String(user?.email || "").trim().toLowerCase()
+    let emailSent = false
+
+    if (recipientEmail) {
+      const paymentLabel =
+        paymentMethod === "cod"
+          ? "Cash on Delivery"
+          : paymentMethod === "online"
+            ? "Online Payment"
+            : String(paymentMethod)
+      try {
+        await sendOrderConfirmationEmail(
+          recipientEmail,
+          String(orderId),
+          Number(totalAmount),
+          user.full_name || "Customer",
+          paymentLabel,
+        )
+        emailSent = true
+      } catch (emailError: any) {
+        console.error("[API] Failed to send receipt email:", emailError?.message || emailError)
+      }
+    } else {
+      console.error("[API] Cannot send receipt email: user email not found for userId", userId)
+    }
+
     return NextResponse.json(
       {
         message: "Order created successfully",
         orderId,
         paymentMethod,
+        emailSent,
+        emailTo: recipientEmail || null,
       },
       { status: 201 },
     )

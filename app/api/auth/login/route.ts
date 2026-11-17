@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyPassword } from "@/lib/auth"
 import { getUserByEmail } from "@/lib/db"
-import { sendLoginEmail } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,11 +66,6 @@ export async function POST(request: NextRequest) {
         }, { status: 401 })
       }
     }
-
-    // Send login notification in the background so login does not wait on Gmail
-    void sendLoginEmail(user.email, user.full_name, user.user_type).catch((emailError: any) => {
-      console.error("[v0] Failed to send login email:", emailError?.message || emailError)
-    })
 
     return NextResponse.json(
       {

@@ -66,9 +66,7 @@ export default function PaymentModal({ open, onClose, amount, onPaymentSuccess, 
 
       toast({
         title: "Payment Successful!",
-        description: data.emailSent
-          ? `Payment of ₹${amount.toFixed(2)} confirmed. Email sent to ${data.emailTo}`
-          : `Payment of ₹${amount.toFixed(2)} confirmed, but the confirmation email was not sent${data.emailError ? `: ${data.emailError}` : ""}`,
+        description: `Payment of ₹${amount.toFixed(2)} confirmed.`,
       })
 
       onPaymentSuccess()

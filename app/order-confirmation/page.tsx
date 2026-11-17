@@ -17,6 +17,8 @@ export default function OrderConfirmationPage() {
   const searchParams = useSearchParams()
   const orderId = searchParams.get("orderId")
   const paymentMethod = searchParams.get("paymentMethod") || "cod"
+  const emailTo = searchParams.get("emailTo")
+  const emailSent = searchParams.get("emailSent") === "1"
 
   const [user, setUser] = useState<User | null>(null)
 
@@ -99,10 +101,21 @@ export default function OrderConfirmationPage() {
                 </p>
               </div>
               
-              <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
-                <Mail className="w-4 h-4 text-purple-600" />
+              <div className="flex items-start gap-2 pt-2 border-t border-gray-200">
+                <Mail className="w-4 h-4 text-purple-600 mt-0.5" />
                 <p className="text-sm text-gray-700">
-                  Confirmation email sent to <span className="font-semibold text-purple-700">{user.email}</span>
+                  {emailSent || emailTo ? (
+                    <>
+                      Receipt email sent to{" "}
+                      <span className="font-semibold text-purple-700">{emailTo || user.email}</span>.
+                      Check Inbox, Promotions, and Spam for subject <span className="font-semibold">Receipt - DailyKart</span>.
+                    </>
+                  ) : (
+                    <>
+                      Receipt email is sent to your login email:{" "}
+                      <span className="font-semibold text-purple-700">{user.email}</span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>

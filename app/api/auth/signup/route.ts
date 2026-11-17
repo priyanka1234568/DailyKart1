@@ -33,11 +33,12 @@ export async function POST(request: NextRequest) {
     const userId = await createUser(normalizedEmail, passwordHash, fullName, userType)
     console.log("[v0] User created with ID:", userId)
 
-    // Send welcome email in the background so signup does not wait on Gmail
-    console.log("[v0] Sending welcome email to:", normalizedEmail, "User type:", userType)
-    void sendWelcomeEmail(normalizedEmail, fullName, userType).catch((emailError: any) => {
-      console.error("[v0] ❌ Failed to send welcome email:", emailError?.message || emailError)
-    })
+    if (userType === "user") {
+      console.log("[v0] Sending welcome email to:", normalizedEmail)
+      void sendWelcomeEmail(normalizedEmail, fullName, userType).catch((emailError: any) => {
+        console.error("[v0] ❌ Failed to send welcome email:", emailError?.message || emailError)
+      })
+    }
 
     return NextResponse.json(
       {
