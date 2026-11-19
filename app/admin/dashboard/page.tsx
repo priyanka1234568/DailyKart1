@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Search } from "lucide-react"
 import AdminProductList from "@/components/admin-product-list"
 import AdminProductForm from "@/components/admin-product-form"
 
@@ -29,6 +30,7 @@ export default function AdminDashboard() {
   const [showForm, setShowForm] = useState(false)
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [filterOpen, setFilterOpen] = useState(false)
 
   useEffect(() => {
     const userData = localStorage.getItem("user")
@@ -86,16 +88,32 @@ export default function AdminDashboard() {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">Product Management</h1>
             <p className="text-sm text-muted-foreground mt-1">Track stock, expiry dates, and product availability from one dashboard.</p>
           </div>
-          <Button onClick={() => { setShowForm(!showForm); if (showForm) setEditProduct(null) }} size="lg" className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all">
-            {showForm ? "Cancel" : "Add Product"}
-          </Button>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <Button onClick={() => { setShowForm(!showForm); if (showForm) setEditProduct(null) }} size="lg" className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all">
+              {showForm ? "Cancel" : "Add Product"}
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => setFilterOpen(true)}
+              className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all"
+            >
+              <Search className="h-4 w-4" />
+              Search & Filter
+            </Button>
+          </div>
         </div>
 
         {/* Add/Edit Product Form */}
         {showForm && <AdminProductForm onProductAdded={handleProductAdded} product={editProduct} />}
 
         {/* Products List */}
-        <AdminProductList key={refreshKey} onEditProduct={handleEditProduct} />
+        <AdminProductList
+          key={refreshKey}
+          onEditProduct={handleEditProduct}
+          filterOpen={filterOpen}
+          onFilterOpenChange={setFilterOpen}
+        />
       </div>
     </div>
   )

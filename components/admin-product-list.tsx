@@ -64,6 +64,8 @@ interface Product {
 
 interface AdminProductListProps {
   onEditProduct?: (product: Product) => void
+  filterOpen?: boolean
+  onFilterOpenChange?: (open: boolean) => void
 }
 
 const emptyFilters = {
@@ -87,12 +89,20 @@ function AvailabilityBadge({ product }: { product: Product }) {
   return <Badge className={className}>{product.availability_label || "Out of Stock"}</Badge>
 }
 
-export default function AdminProductList({ onEditProduct }: AdminProductListProps) {
+const selectClassName =
+  "w-full h-10 px-3 py-2 border border-input rounded-md bg-background text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+
+export default function AdminProductList({
+  onEditProduct,
+  filterOpen = false,
+  onFilterOpenChange,
+}: AdminProductListProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([])
   const [stats, setStats] = useState({ total: 0, inStock: 0, lowStock: 0, outOfStock: 0 })
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState(emptyFilters)
+  const [draftFilters, setDraftFilters] = useState(emptyFilters)
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [viewTarget, setViewTarget] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -128,9 +138,42 @@ export default function AdminProductList({ onEditProduct }: AdminProductListProp
       if (filters.expiry && product.expiry_status !== filters.expiry) return false
       if (filters.stockStatus === "available" && Number(product.quantity) <= 0) return false
       if (filters.stockStatus === "unavailable" && Number(product.quantity) > 0) return false
+      if (
+        filters.stockStatus &&
+        !["available", "unavailable"].includes(filters.stockStatus) &&
+        product.availability !== filters.stockStatus
+      ) {
+        return false
+      }
       return true
     })
   }, [products, filters])
+
+  const activeFilterCount = useMemo(
+    () => Object.values(filters).filter((value) => value !== "").length,
+    [filters],
+  )
+
+  useEffect(() => {
+    if (filterOpen) setDraftFilters(filters)
+    // Copy the applied filters into the form only when the popup opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterOpen])
+
+  const applyFilterSet = (next: typeof emptyFilters) => {
+    setFilters(next)
+    setDraftFilters(next)
+  }
+
+  const applyDraftFilters = () => {
+    setFilters(draftFilters)
+    onFilterOpenChange?.(false)
+  }
+
+  const clearFilters = () => {
+    setDraftFilters(emptyFilters)
+    setFilters(emptyFilters)
+  }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -201,10 +244,10 @@ export default function AdminProductList({ onEditProduct }: AdminProductListProp
             key={card.label}
             className="rounded-2xl border-0 shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
             onClick={() => {
-              if (card.label === "Total Products") setFilters({ ...emptyFilters })
-              if (card.label === "In Stock") setFilters({ ...emptyFilters, availability: "in_stock" })
-              if (card.label === "Low Stock") setFilters({ ...emptyFilters, availability: "low_stock" })
-              if (card.label === "Out of Stock") setFilters({ ...emptyFilters, availability: "out_of_stock" })
+              if (card.label === "Total Products") applyFilterSet({ ...emptyFilters })
+              if (card.label === "In Stock") applyFilterSet({ ...emptyFilters, availability: "in_stock" })
+              if (card.label === "Low Stock") applyFilterSet({ ...emptyFilters, availability: "low_stock" })
+              if (card.label === "Out of Stock") applyFilterSet({ ...emptyFilters, availability: "out_of_stock" })
             }}
           >
             <div className={`h-1.5 bg-gradient-to-r ${card.accent}`} />
@@ -225,105 +268,127 @@ export default function AdminProductList({ onEditProduct }: AdminProductListProp
         ))}
       </div>
 
-      <Card className="rounded-2xl shadow-md p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Search and Filters</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Search by Product Name</label>
-            <Input
-              placeholder="e.g. Tomato, Rice"
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            />
+      <Dialog open={filterOpen} onOpenChange={(open) => onFilterOpenChange?.(open)}>
+        <DialogContent className="bg-white sm:max-w-3xl max-h-[min(90vh,820px)] overflow-y-auto rounded-2xl border border-slate-200 p-0 shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-2 pr-12">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Search className="h-5 w-5 text-blue-600" />
+              Search & Filter
+            </DialogTitle>
+            <DialogDescription>
+              Narrow the product list by name, category, price, stock, and expiry.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-2">
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium mb-2">Search by Product Name</label>
+              <Input
+                placeholder="e.g. Tomato, Rice"
+                value={draftFilters.search}
+                onChange={(e) => setDraftFilters({ ...draftFilters, search: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Category</label>
+              <select
+                value={draftFilters.categoryId}
+                onChange={(e) => setDraftFilters({ ...draftFilters, categoryId: e.target.value })}
+                className={selectClassName}
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Availability</label>
+              <select
+                value={draftFilters.availability}
+                onChange={(e) => setDraftFilters({ ...draftFilters, availability: e.target.value })}
+                className={selectClassName}
+              >
+                <option value="">All Availability</option>
+                <option value="in_stock">In Stock</option>
+                <option value="out_of_stock">Out of Stock</option>
+                <option value="low_stock">Low Stock</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Minimum Price (₹)</label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={draftFilters.minPrice}
+                onChange={(e) => setDraftFilters({ ...draftFilters, minPrice: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Maximum Price (₹)</label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="500"
+                value={draftFilters.maxPrice}
+                onChange={(e) => setDraftFilters({ ...draftFilters, maxPrice: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Expiry Date</label>
+              <select
+                value={draftFilters.expiry}
+                onChange={(e) => setDraftFilters({ ...draftFilters, expiry: e.target.value })}
+                className={selectClassName}
+              >
+                <option value="">All Expiry Statuses</option>
+                <option value="not_expired">Not Expired</option>
+                <option value="expiring_soon">Expiring Soon</option>
+                <option value="expired">Expired</option>
+                <option value="none">No Expiry Date</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Stock Status</label>
+              <select
+                value={draftFilters.stockStatus}
+                onChange={(e) => setDraftFilters({ ...draftFilters, stockStatus: e.target.value })}
+                className={selectClassName}
+              >
+                <option value="">All Stock</option>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="out_of_stock">Out of Stock</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Category</label>
-            <select
-              value={filters.categoryId}
-              onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}
-              className="w-full h-9 px-3 py-1 border border-input rounded-md bg-background text-sm"
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 px-6 py-5 mt-2 border-t bg-slate-50/80 rounded-b-2xl">
+            <Button type="button" variant="outline" className="h-10" onClick={clearFilters}>
+              Clear Filters
+            </Button>
+            <Button
+              type="button"
+              className="h-10 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white"
+              onClick={applyDraftFilters}
             >
-              <option value="">All categories</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+              Apply Filters
+            </Button>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Availability</label>
-            <select
-              value={filters.availability}
-              onChange={(e) => setFilters({ ...filters, availability: e.target.value })}
-              className="w-full h-9 px-3 py-1 border border-input rounded-md bg-background text-sm"
-            >
-              <option value="">All availability</option>
-              <option value="in_stock">In Stock</option>
-              <option value="low_stock">Low Stock</option>
-              <option value="out_of_stock">Out of Stock</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Minimum Price (₹)</label>
-            <Input
-              type="number"
-              min="0"
-              placeholder="0"
-              value={filters.minPrice}
-              onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Maximum Price (₹)</label>
-            <Input
-              type="number"
-              min="0"
-              placeholder="500"
-              value={filters.maxPrice}
-              onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Expiry Date</label>
-            <select
-              value={filters.expiry}
-              onChange={(e) => setFilters({ ...filters, expiry: e.target.value })}
-              className="w-full h-9 px-3 py-1 border border-input rounded-md bg-background text-sm"
-            >
-              <option value="">All expiry statuses</option>
-              <option value="expired">Expired</option>
-              <option value="expiring_soon">Expiring Soon</option>
-              <option value="not_expired">Not Expired</option>
-              <option value="none">No Expiry Date</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Stock Status</label>
-            <select
-              value={filters.stockStatus}
-              onChange={(e) => setFilters({ ...filters, stockStatus: e.target.value })}
-              className="w-full h-9 px-3 py-1 border border-input rounded-md bg-background text-sm"
-            >
-              <option value="">All stock</option>
-              <option value="available">Has stock</option>
-              <option value="unavailable">Zero stock</option>
-            </select>
-          </div>
-        </div>
-        <div className="mt-4">
-          <Button variant="outline" onClick={() => setFilters(emptyFilters)}>
-            Clear Filters
-          </Button>
-        </div>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       <Card className="rounded-2xl shadow-md overflow-hidden">
         <div className="px-5 py-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Product Inventory</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Product Inventory</h2>
+            {activeFilterCount > 0 && (
+              <p className="text-xs text-blue-700 mt-0.5">
+                {activeFilterCount} filter{activeFilterCount === 1 ? "" : "s"} applied
+              </p>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             {filteredProducts.length} of {products.length} products
           </p>

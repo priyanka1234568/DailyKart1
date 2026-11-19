@@ -1,0 +1,332 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: DailyKart Grocery Shopping Application - Mumbai Region
+
+Parameters:
+
+  AdminEmail:
+    Description: Email address for DailyKart admin and SES verification
+    Type: String
+    AllowedPattern: '^[^\s@]+@[^\s@]+\.[^\s@]+$'
+
+  KeyPairName:
+    Description: Existing EC2 key pair in ap-south-1
+    Type: AWS::EC2::KeyPair::KeyName
+
+  VpcId:
+    Description: VPC for DailyKart resources
+    Type: AWS::EC2::VPC::Id
+
+  EC2Subnet:
+    Description: Public subnet for EC2
+    Type: AWS::EC2::Subnet::Id
+
+  DBSubnet1:
+    Description: First private database subnet
+    Type: AWS::EC2::Subnet::Id
+
+  DBSubnet2:
+    Description: Second private database subnet in a different AZ
+    Type: AWS::EC2::Subnet::Id
+
+  SSHLocation:
+    Description: Your public IP address followed by /32
+    Type: String
+    AllowedPattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}/32$'
+
+  DBUsername:
+    Description: RDS master username
+    Type: String
+    Default: dailykartadmin
+    MinLength: 1
+    MaxLength: 16
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9]*$'
+
+  DBPassword:
+    Description: RDS master password
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 41
+    AllowedPattern: '^[a-zA-Z0-9!#$%^&*()_+=-]+$'
+
+Resources:
+
+  # EC2 SECURITY GROUP
+
+  DailyKartEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for DailyKart EC2
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHLocation
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  # RDS SECURITY GROUP
+
+  DailyKartRDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DeletionPolicy: Retain
+    Properties:
+      GroupDescription: Allow MySQL access from DailyKart EC2 only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !GetAtt DailyKartEC2SecurityGroup.GroupId
+
+  # S3 BUCKET
+
+  DailyKartS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # COGNITO USER POOL
+
+  DailyKartUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: DailyKartUsers
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+
+  # COGNITO CLIENT
+
+  DailyKartUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: DailyKartWebClient
+      UserPoolId: !Ref DailyKartUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # SES EMAIL IDENTITY
+
+  DailyKartSESIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref AdminEmail
+
+  # CLOUDWATCH LOG GROUP
+
+  DailyKartLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /dailykart/application
+      RetentionInDays: 14
+
+  # EC2 IAM ROLE
+
+  DailyKartEC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub DailyKartEC2Role-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+
+      Policies:
+        - PolicyName: DailyKartS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt DailyKartS3Bucket.Arn
+
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub '${DailyKartS3Bucket.Arn}/*'
+
+        - PolicyName: DailyKartSESEmailAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${AdminEmail}'
+
+  # EC2 INSTANCE PROFILE
+
+  DailyKartInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref DailyKartEC2Role
+
+  # EC2 INSTANCE
+
+  DailyKartEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      InstanceType: t3.micro
+      KeyName: !Ref KeyPairName
+      IamInstanceProfile: !Ref DailyKartInstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: '0'
+          SubnetId: !Ref EC2Subnet
+          GroupSet:
+            - !GetAtt DailyKartEC2SecurityGroup.GroupId
+
+      Tags:
+        - Key: Name
+          Value: DailyKart-EC2
+
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf update -y
+          dnf install -y amazon-cloudwatch-agent
+
+          mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+
+          cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'EOF'
+          {
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
+                    {
+                      "file_path": "/var/log/messages",
+                      "log_group_name": "/dailykart/application",
+                      "log_stream_name": "ec2-system"
+                    },
+                    {
+                      "file_path": "/var/log/cloud-init-output.log",
+                      "log_group_name": "/dailykart/application",
+                      "log_stream_name": "ec2-userdata"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          EOF
+
+          systemctl enable amazon-cloudwatch-agent
+          systemctl start amazon-cloudwatch-agent
+
+  # RDS SUBNET GROUP
+
+  DailyKartDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    DeletionPolicy: Retain
+    Properties:
+      DBSubnetGroupDescription: DailyKart MySQL subnet group
+      SubnetIds:
+        - !Ref DBSubnet1
+        - !Ref DBSubnet2
+
+  # RDS MYSQL DATABASE
+
+  DailyKartRDS:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DBInstanceClass: db.t3.micro
+      Engine: mysql
+      AllocatedStorage: '20'
+      StorageType: gp3
+      DBName: dailykart
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups:
+        - !GetAtt DailyKartRDSSecurityGroup.GroupId
+      DBSubnetGroupName: !Ref DailyKartDBSubnetGroup
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 1
+      StorageEncrypted: true
+      AutoMinorVersionUpgrade: true
+
+Outputs:
+
+  EC2PublicIP:
+    Description: DailyKart EC2 Public IP
+    Value: !GetAtt DailyKartEC2.PublicIp
+
+  EC2PublicDNS:
+    Description: DailyKart EC2 Public DNS
+    Value: !GetAtt DailyKartEC2.PublicDnsName
+
+  S3BucketName:
+    Description: DailyKart grocery image bucket
+    Value: !Ref DailyKartS3Bucket
+
+  RDSDatabaseEndpoint:
+    Description: MySQL database endpoint
+    Value: !GetAtt DailyKartRDS.Endpoint.Address
+
+  RDSPort:
+    Description: MySQL port
+    Value: !GetAtt DailyKartRDS.Endpoint.Port
+
+  CognitoUserPoolID:
+    Description: Cognito User Pool ID
+    Value: !Ref DailyKartUserPool
+
+  CognitoClientID:
+    Description: Cognito App Client ID
+    Value: !Ref DailyKartUserPoolClient
+
+  CloudWatchLogGroup:
+    Description: CloudWatch log group
+    Value: !Ref DailyKartLogGroup
+
+  SESAdminEmail:
+    Description: SES identity email
+    Value: !Ref AdminEmail
