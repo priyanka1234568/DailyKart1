@@ -285,9 +285,83 @@ export async function updateCartItemQuantity(userId: string, productId: string, 
   }
 }
 
+let orderSchemaReady: Promise<void> | null = null
+
+export async function ensureOrderDetailColumns() {
+  if (!orderSchemaReady) {
+    orderSchemaReady = (async () => {
+      const connection = await pool.getConnection()
+      try {
+        const [cols]: any = await connection.execute(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders'`,
+        )
+        const names = new Set((cols || []).map((col: { COLUMN_NAME: string }) => col.COLUMN_NAME))
+        const addColumn = async (name: string, ddl: string) => {
+          if (!names.has(name)) {
+            await connection.execute(ddl)
+            names.add(name)
+          }
+        }
+        await addColumn("payment_method", "ALTER TABLE orders ADD COLUMN payment_method VARCHAR(50) DEFAULT 'cod'")
+        await addColumn("phone", "ALTER TABLE orders ADD COLUMN phone VARCHAR(30) NULL")
+        await addColumn("delivery_address", "ALTER TABLE orders ADD COLUMN delivery_address TEXT NULL")
+        await addColumn("city", "ALTER TABLE orders ADD COLUMN city VARCHAR(100) NULL")
+        await addColumn("zip_code", "ALTER TABLE orders ADD COLUMN zip_code VARCHAR(20) NULL")
+        await addColumn("payment_status", "ALTER TABLE orders ADD COLUMN payment_status VARCHAR(20) DEFAULT 'pending'")
+        await addColumn(
+          "expected_delivery_at",
+          "ALTER TABLE orders ADD COLUMN expected_delivery_at DATETIME NULL",
+        )
+        if (names.has("payment_method") && names.has("payment_status")) {
+          await connection.execute(
+            `UPDATE orders
+             SET payment_status = 'paid'
+             WHERE LOWER(COALESCE(payment_method, 'cod')) = 'online'
+               AND (payment_status IS NULL OR payment_status = '' OR payment_status = 'pending')`,
+          )
+          await connection.execute(
+            `UPDATE orders
+             SET payment_status = 'pending'
+             WHERE LOWER(COALESCE(payment_method, 'cod')) <> 'online'
+               AND (payment_status IS NULL OR payment_status = '')`,
+          )
+        }
+        if (names.has("expected_delivery_at")) {
+          await connection.execute(
+            `UPDATE orders
+             SET expected_delivery_at = DATE_ADD(created_at, INTERVAL 1 HOUR)
+             WHERE expected_delivery_at IS NULL`,
+          )
+        }
+      } catch (error) {
+        orderSchemaReady = null
+        throw error
+      } finally {
+        connection.release()
+      }
+    })()
+  }
+  await orderSchemaReady
+}
+
+export interface OrderShippingDetails {
+  address?: string
+  city?: string
+  zipCode?: string
+  phone?: string
+}
+
 // Order queries
-export async function createOrder(userId: string, totalAmount: number, items: any[], paymentMethod: string = "cod") {
+export async function createOrder(
+  userId: string,
+  totalAmount: number,
+  items: any[],
+  paymentMethod: string = "cod",
+  shipping?: OrderShippingDetails,
+) {
   await ensureProductInventoryColumns()
+  await ensureOrderDetailColumns()
   const connection = await getDb()
   try {
     console.log("[DB] Creating order:", { userId, totalAmount, items: items?.length, paymentMethod })
@@ -308,19 +382,35 @@ export async function createOrder(userId: string, totalAmount: number, items: an
       }
     }
 
-    // Try with payment_method column first, fallback to without it
+    const phone = shipping?.phone?.trim() || null
+    const deliveryAddress = shipping?.address?.trim() || null
+    const city = shipping?.city?.trim() || null
+    const zipCode = shipping?.zipCode?.trim() || null
+    const paymentStatus = paymentMethod === "online" ? "paid" : "pending"
+
+    // Prefer the full customer/order columns, then fall back so checkout still works
     let result: any
     try {
       ;[result] = await connection.execute(
-        "INSERT INTO orders (user_id, total_amount, status, payment_method, created_at) VALUES (?, ?, ?, ?, NOW())",
-        [userId, totalAmount, "pending", paymentMethod],
+        `INSERT INTO orders (
+           user_id, total_amount, status, payment_method, phone, delivery_address, city, zip_code,
+           payment_status, expected_delivery_at, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR), NOW())`,
+        [userId, totalAmount, "pending", paymentMethod, phone, deliveryAddress, city, zipCode, paymentStatus],
       )
     } catch (error) {
-      console.log("[DB] Payment method column not found, using fallback")
-      ;[result] = await connection.execute(
-        "INSERT INTO orders (user_id, total_amount, status, created_at) VALUES (?, ?, ?, NOW())",
-        [userId, totalAmount, "pending"],
-      )
+      console.log("[DB] Full order columns unavailable, using fallback:", (error as Error)?.message)
+      try {
+        ;[result] = await connection.execute(
+          "INSERT INTO orders (user_id, total_amount, status, payment_method, created_at) VALUES (?, ?, ?, ?, NOW())",
+          [userId, totalAmount, "pending", paymentMethod],
+        )
+      } catch {
+        ;[result] = await connection.execute(
+          "INSERT INTO orders (user_id, total_amount, status, created_at) VALUES (?, ?, ?, NOW())",
+          [userId, totalAmount, "pending"],
+        )
+      }
     }
 
     const orderId = result?.insertId
@@ -419,6 +509,63 @@ export async function getOrderItems(orderId: string) {
       [orderId],
     )
     return rows
+  } finally {
+    connection.release()
+  }
+}
+
+const adminOrderSelect = `
+  SELECT
+    o.id,
+    o.user_id,
+    o.total_amount,
+    o.status,
+    o.created_at,
+    o.payment_method,
+    o.phone,
+    o.delivery_address,
+    o.city,
+    o.zip_code,
+    o.payment_status,
+    o.expected_delivery_at,
+    u.full_name,
+    u.email,
+    COALESCE((
+      SELECT SUM(oi.quantity * oi.price)
+      FROM order_items oi
+      WHERE oi.order_id = o.id
+    ), 0) AS items_subtotal
+  FROM orders o
+  INNER JOIN users u ON u.id = o.user_id
+`
+
+export async function listOrdersWithCustomers() {
+  await ensureOrderDetailColumns()
+  const connection = await getDb()
+  try {
+    const [rows] = await connection.execute(`${adminOrderSelect} ORDER BY o.created_at DESC, o.id DESC`)
+    return rows as any[]
+  } finally {
+    connection.release()
+  }
+}
+
+export async function getAdminOrderDetail(orderId: string) {
+  await ensureOrderDetailColumns()
+  const connection = await getDb()
+  try {
+    const [orders] = await connection.execute(`${adminOrderSelect} WHERE o.id = ?`, [orderId])
+    const order = (orders as any[])[0]
+    if (!order) return null
+    const [items] = await connection.execute(
+      `SELECT oi.id, oi.product_id, oi.quantity, oi.price, p.name, p.image_url
+       FROM order_items oi
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = ?
+       ORDER BY oi.id`,
+      [orderId],
+    )
+    return { order, items: items as any[] }
   } finally {
     connection.release()
   }

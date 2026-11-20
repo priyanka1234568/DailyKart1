@@ -4,7 +4,7 @@ import { sendOrderConfirmationEmail } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, items, totalAmount, paymentMethod = "cod" } = await request.json()
+    const { userId, items, totalAmount, paymentMethod = "cod", shippingAddress } = await request.json()
 
     console.log("[API] Order request:", { userId, items: items?.length, totalAmount, paymentMethod })
 
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const orderId = await createOrder(String(userId), Number(totalAmount), items, paymentMethod)
+    const orderId = await createOrder(String(userId), Number(totalAmount), items, paymentMethod, shippingAddress)
 
     const user = await getUserById(String(userId))
     const recipientEmail = String(user?.email || "").trim().toLowerCase()
